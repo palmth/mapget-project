@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="utf-8">
+    <title>ระบบสารสนเทศแปลงที่ดิน - GIS Dashboard Pro</title>
+    <!-- โหลด Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- โหลด Leaflet.Draw CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    
+    <style>
+        :root {
+            --bg-dark: #090d16;
+            --panel-bg: rgba(15, 23, 42, 0.88);
+            --border-glass: rgba(255, 255, 255, 0.1);
+            --accent-gold: #fbbf24;
+            --accent-cyan: #38bdf8;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body, html { 
+            margin: 0; 
+            padding: 0; 
+            height: 100%; 
+            font-family: 'Segoe UI', Tahoma, sans-serif; 
+            color: var(--text-main);
+            background-color: var(--bg-dark);
+        }
+
+        #map { width: 100%; height: 100vh; background-color: var(--bg-dark); }
+        
+        .length-label {
+            background: transparent;
+            border: none;
+            padding: 0;
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--accent-gold);
+            text-shadow: 
+                -2px -2px 0 #000,  
+                 2px -2px 0 #000,
+                -2px  2px 0 #000,
+                 2px  2px 0 #000,
+                 0px 3px 6px rgba(0,0,0,0.9);
+            white-space: nowrap;
+            transform: translate(-50%, -50%);
+        }
+
+        .corner-marker {
+            background: #1e293b;
+            border: 2px solid var(--accent-gold);
+            color: var(--accent-gold);
+            font-size: 11px;
+            font-weight: 700;
+            text-align: center;
+            line-height: 18px;
+            border-radius: 50%;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            cursor: pointer;
+        }
+
+        /* แผงควบคุมดีไซน์ Glassmorphism รองรับการย่อขยาย */
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 22px;
+            border-radius: 16px;
+            border: 1px solid var(--border-glass);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            z-index: 1000;
+            max-width: 340px;
+            width: 100%;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--accent-cyan);
+            padding-bottom: 8px;
+            margin-bottom: 14px;
+        }
+
+        .info-panel h4 { 
+            margin: 0; 
+            color: var(--text-main); 
+            font-size: 16px; 
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .toggle-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: var(--text-main);
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        .toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .panel-body {
+            display: block;
+            transition: opacity 0.2s ease;
+        }
+
+        .info-panel.minimized .panel-body {
+            display: none;
+        }
+
+        .info-panel.minimized {
+            padding: 14px 22px;
+        }
+
+        .info-panel.minimized .panel-header {
+            margin-bottom: 0;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 10px 0;
+            font-size: 13px;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+            padding-bottom: 8px;
+        }
+        .data-row span { color: var(--text-muted); }
+        .info-panel .highlight { font-weight: 700; color: var(--accent-gold); text-align: right; }
+        .info-panel .highlight-num { font-weight: 700; color: var(--text-main); }
+
+        .btn-action {
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--accent-cyan);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            padding: 10px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            margin-top: 8px;
+            width: 100%;
+            font-weight: 600;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+        }
+        .btn-action:hover { 
+            background: var(--accent-cyan); 
+            color: #0f172a;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+        }
+
+        .btn-gmaps { 
+            background: rgba(239, 68, 68, 0.15); 
+            color: #f87171; 
+            border-color: rgba(239, 68, 68, 0.3); 
+        }
+        .btn-gmaps:hover { background: #ef4444; color: white; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
+
+        .btn-gps { 
+            background: rgba(20, 184, 166, 0.15); 
+            color: #2dd4bf; 
+            border-color: rgba(20, 184, 166, 0.3); 
+        }
+        .btn-gps:hover { background: #14b8a6; color: white; box-shadow: 0 0 15px rgba(20, 184, 166, 0.4); }
+
+        .btn-street { 
+            background: rgba(245, 158, 11, 0.15); 
+            color: #fbbf24; 
+            border-color: rgba(245, 158, 11, 0.3); 
+        }
+        .btn-street:hover { background: #f59e0b; color: #0f172a; box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); }
+
+        .btn-print { 
+            background: rgba(168, 85, 247, 0.15); 
+            color: #c084fc; 
+            border-color: rgba(168, 85, 247, 0.3); 
+        }
+        .btn-print:hover { background: #a855f7; color: white; box-shadow: 0 0 15px rgba(168, 85, 247, 0.4); }
+        
+        .divider { height: 1px; background: rgba(255, 255, 255, 0.1); margin: 12px 0; }
+
+        .popup-btn {
+            background: var(--accent-gold);
+            color: #0f172a;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 700;
+            margin-top: 6px;
+            width: 100%;
+            text-align: center;
+        }
+        .popup-btn:hover { opacity: 0.9; }
+
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+            background: #1e293b !important;
+            color: #f8fafc !important;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <div class="info-panel" id="infoPanel">
+        <div class="panel-header">
+            <h4>⚡ GIS LAND PLOT PRO</h4>
+            <button class="toggle-btn" id="toggleBtn" onclick="togglePanel()" title="ย่อ/ขยายแผงควบคุม">−</button>
+        </div>
+        
+        <div class="panel-body">
+            <div class="data-row">
+                <span>จำนวนจุดหมุด:</span>
+                <span class="highlight-num"><span id="point-count">0</span> จุด</span>
+            </div>
+            <div class="data-row">
+                <span>ความยาวรอบรูป:</span>
+                <span class="highlight-num"><span id="total-perimeter">0</span> เมตร</span>
+            </div>
+            <div class="data-row" style="flex-direction: column; align-items: flex-start; border-bottom: none;">
+                <span style="margin-bottom: 4px;">เนื้อที่รวม:</span>
+                <div class="highlight" id="total-area" style="width: 100%; font-size: 14px; background: rgba(2, 6, 23, 0.5); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08);">0</div>
+            </div>
+
+            <div class="divider"></div>
+
+            <button class="btn-action" onclick="resetView()">🎯 ซูมพอดีขอบเขตแปลง</button>
+            <button class="btn-action btn-gps" onclick="locateUser()">📍 ตำแหน่งปัจจุบันของฉัน</button>
+            <a id="streetview-link" href="#" target="_blank" class="btn-action btn-street">📷 เปิด Google Street View</a>
+            
+            <div class="divider"></div>
+
+            <button class="btn-action btn-print" onclick="window.print()">🖨️ พิมพ์รายงานแปลง (PDF)</button>
+            <a id="gmaps-link" href="#" target="_blank" class="btn-action btn-gmaps">🗺️ เปิดนำทางใน Google Maps</a>
+        </div>
+    </div>
+
+    <!-- โหลด Leaflet JS และ Leaflet.Draw JS ตามลำดับ -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    
+    <script>
+        function togglePanel() {
+            const panel = document.getElementById('infoPanel');
+            const btn = document.getElementById('toggleBtn');
+            panel.classList.toggle('minimized');
+            if (panel.classList.contains('minimized')) {
+                btn.innerText = '+';
+            } else {
+                btn.innerText = '−';
+            }
+        }
+
+        const defaultRawCoords = [
+
+        ];
+
+        function getCoordsFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            const coordsParam = params.get('coords');
+            if (!coordsParam) return null;
+
+            try {
+                const parts = coordsParam.split(',').map(Number);
+                const latLngs = [];
+                for (let i = 0; i < parts.length; i += 2) {
+                    if (!isNaN(parts[i]) && !isNaN(parts[i+1])) {
+                        latLngs.push([parts[i], parts[i+1]]);
+                    }
+                }
+                if (latLngs.length > 2) {
+                    const first = latLngs[0];
+                    const last = latLngs[latLngs.length - 1];
+                    if (first[0] !== last[0] || first[1] !== last[1]) {
+                        latLngs.push([...first]);
+                    }
+                    return latLngs;
+                }
+            } catch (e) {
+                console.error("Error parsing URL coords:", e);
+            }
+            return null;
+        }
+
+        const map = L.map('map', {
+            maxZoom: 22,
+            zoomControl: false
+        }).setView([16.8169936,100.257684], 17);
+
+        L.control.zoom({ position: 'bottomleft' }).addTo(map);
+
+        const googleSat = L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+            maxZoom: 22,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: '&copy; Google Maps'
+        }).addTo(map);
+
+        const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            maxZoom: 22,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: '&copy; Google Maps'
+        });
+
+        L.control.layers({
+            "🛰️ ดาวเทียม (Hybrid)": googleSat,
+            "🗺️ แผนที่ถนน": googleStreets
+        }, {}, { position: 'bottomleft' }).addTo(map);
+
+        let currentPolygon = null;
+        let layerGroup = L.layerGroup().addTo(map);
+
+        function getDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371000;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        function calculateArea(coords) {
+            let area = 0;
+            const R = 6378137;
+            for (let i = 0; i < coords.length - 1; i++) {
+                const p1 = coords[i];
+                const p2 = coords[i+1];
+                const lon1 = p1[1] * Math.PI / 180;
+                const lon2 = p2[1] * Math.PI / 180;
+                const lat1 = p1[0] * Math.PI / 180;
+                const lat2 = p2[0] * Math.PI / 180;
+                area += (lon2 - lon1) * (2 + Math.sin(lat1) + Math.sin(lat2));
+            }
+            return Math.abs(area * R * R / 2.0);
+        }
+
+        function renderLandPlot(latLngs) {
+            layerGroup.clearLayers();
+
+            currentPolygon = L.polygon(latLngs, {
+                color: '#fbbf24',     
+                fillColor: '#0ea5e9',  
+                fillOpacity: 0.25,
+                weight: 3.5
+            }).addTo(layerGroup);
+
+            const totalPoints = latLngs.length - 1;
+            document.getElementById('point-count').innerText = totalPoints;
+
+            let sumLat = 0, sumLng = 0;
+            for(let i=0; i<totalPoints; i++) {
+                sumLat += latLngs[i][0];
+                sumLng += latLngs[i][1];
+            }
+            const centerLat = sumLat / totalPoints;
+            const centerLng = sumLng / totalPoints;
+
+            document.getElementById('gmaps-link').href = `https://www.google.com/maps/@${centerLat},${centerLng},20z/data=!3m1!1e3`;
+            document.getElementById('streetview-link').href = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${centerLat},${centerLng}`;
+
+            const areaSqMeters = calculateArea(latLngs);
+            const rai = Math.floor(areaSqMeters / 1600);
+            const ngan = Math.floor((areaSqMeters % 1600) / 400);
+            const sqWa = ((areaSqMeters % 400) / 4).toFixed(1);
+            
+            document.getElementById('total-area').innerHTML = 
+                `<b style="color: var(--accent-gold);">${rai} ไร่ ${ngan} งาน ${sqWa} ตร.วา</b><br><span style="font-size: 11px; color: var(--text-muted);">(${areaSqMeters.toLocaleString('en-US', {maximumFractionDigits: 0})} ตารางเมตร)</span>`;
+
+            let totalPerimeter = 0;
+            for (let i = 0; i < latLngs.length - 1; i++) {
+                const p1 = latLngs[i];
+                const p2 = latLngs[i+1];
+                
+                const dist = getDistance(p1[0], p1[1], p2[0], p2[1]);
+                totalPerimeter += dist;
+
+                const midLat = (p1[0] + p2[0]) / 2;
+                const midLng = (p1[1] + p2[1]) / 2;
+
+                L.marker([midLat, midLng], {
+                    icon: L.divIcon({
+                        className: 'length-label',
+                        html: `${dist.toFixed(1)} ม.`,
+                        iconSize: [0, 0]
+                    })
+                }).addTo(layerGroup);
+
+                const marker = L.marker(p1, {
+                    icon: L.divIcon({
+                        className: 'corner-marker',
+                        html: `${i+1}`,
+                        iconSize: [22, 22],
+                        iconAnchor: [11, 11]
+                    })
+                }).addTo(layerGroup);
+
+                const streetViewUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${p1[0]},${p1[1]}`;
+                marker.bindPopup(`<div style="font-size: 13px;"><b>หมุดจุดที่ ${i+1}</b><br>Lat: ${p1[0].toFixed(6)}<br>Lng: ${p1[1].toFixed(6)}<a href="${streetViewUrl}" target="_blank"><button class="popup-btn">📷 เปิด Street View</button></a></div>`);
+            }
+
+            document.getElementById('total-perimeter').innerText = totalPerimeter.toFixed(1);
+        }
+
+        const urlCoords = getCoordsFromURL();
+        const activeLatLngs = urlCoords ? urlCoords : defaultRawCoords.map(c => [c[1], c[0]]);
+        
+        renderLandPlot(activeLatLngs);
+
+        function resetView() {
+            if (currentPolygon) {
+                map.fitBounds(currentPolygon.getBounds(), { maxZoom: 19 });
+            }
+        }
+        resetView();
+
+        const drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+
+        const drawControl = new L.Control.Draw({
+            position: 'topleft',
+            draw: {
+                polygon: { allowIntersection: false, showArea: true },
+                polyline: true,
+                rectangle: false,
+                circle: false,
+                marker: false,
+                circlemarker: false
+            },
+            edit: {
+                featureGroup: drawnItems
+            }
+        });
+        map.addControl(drawControl);
+
+        map.on(L.Draw.Event.CREATED, function (e) {
+            const layer = e.layer;
+            drawnItems.clearLayers();
+            drawnItems.addLayer(layer);
+
+            if (e.layerType === 'polygon') {
+                const latLngs = layer.getLatLngs()[0];
+                latLngs.push(latLngs[0]);
+                renderLandPlot(latLngs);
+            }
+        });
+
+        function locateUser() {
+            map.locate({setView: true, maxZoom: 18});
+        }
+        map.on('locationfound', function(e) {
+            L.marker(e.latlng).addTo(map)
+                .bindPopup("📍 ตำแหน่งปัจจุบันของคุณ").openPopup();
+        });
+        map.on('locationerror', function(e) {
+            alert("ไม่สามารถเข้าถึงตำแหน่ง GPS ของคุณได้");
+        });
+    </script>
+</body>
+</html>

@@ -380,7 +380,7 @@
             const centerLat = sumLat / totalPoints;
             const centerLng = sumLng / totalPoints;
 
-            document.getElementById('gmaps-link').href = `https://www.google.com/maps/place/${centerLat},${centerLng},20z/data=!3m1!1e3`;
+            document.getElementById('gmaps-link').href = `https://www.google.com/maps/place/${centerLat},${centerLng}`;
             document.getElementById('streetview-link').href = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${centerLat},${centerLng}`;
 
             const areaSqMeters = calculateArea(latLngs);

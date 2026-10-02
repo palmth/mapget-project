@@ -34,7 +34,7 @@
             background: transparent;
             border: none;
             padding: 0;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 800;
             color: var(--accent-gold);
             text-shadow: 
@@ -47,20 +47,29 @@
             transform: translate(-50%, -50%);
         }
 
-        .corner-marker {
-            background: #1e293b;
-            border: 2px solid var(--accent-gold);
-            color: var(--accent-gold);
-            font-size: 11px;
-            font-weight: 700;
-            text-align: center;
-            line-height: 22px;
-            border-radius: 12px;
-            padding: 0 6px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            cursor: pointer;
-            white-space: nowrap;
-        }
+.corner-marker {
+  /* กำหนดเส้นขอบเป็นสี accent-gold */
+  border: 1px solid var(--accent-gold) !important;
+  
+  /* ปรับรูปทรงให้เป็นวงกลมสมบูรณ์ */
+  border-radius: 50% !important;
+  
+  /* ใส่แสงเงา นีออน/โกลว์ แบบเดิม */
+  box-shadow: 0 0 5px var(--accent-gold), 
+              inset 0 0 4px var(--accent-gold) !important;
+  
+  /* จัดวางตัวเลข/ข้อความให้อยู่กึ่งกลางวงกลม */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  
+  /* ปรับแต่งฟอนต์ตัวเลขให้ชัดเจน */
+  font-family: 'Orbitron', sans-serif !important;
+  font-weight: bold !important;
+  color: var(--accent-gold) !important;
+  background: rgba(13, 15, 24, 0.85) !important; /* พื้นหลังเข้มเพื่อให้ตัวเลขลอยชัดเจน */
+}
 
         /* แผงควบคุมดีไซน์ Glassmorphism รองรับการย่อขยาย */
         .info-panel {

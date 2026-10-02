@@ -288,84 +288,83 @@
 
         const defaultRawCoords = [];
 
-        // ฟังก์ชันอ่านค่าพิกัดจาก GET Request
-       // ฟังก์ชันอ่านค่าพิกัดจาก GET Request (แก้ไขปรับปรุงแล้ว)
-function getCoordsFromURL() {
-    const params = new URLSearchParams(window.location.search);
-    
-    // 1. อ่านค่าจาก 'coords' สำหรับ 1 แปลงที่ดิน (Polygon)
-    const coordsParam = params.get('coords');
-    if (coordsParam) {
-        try {
-            const decoded = decodeURIComponent(coordsParam);
-            const parts = decoded.split(',').map(item => item.trim());
-            const latLngs = [];
-            for (let i = 0; i < parts.length; i += 2) {
-                const lat = parseFloat(parts[i]);
-                const lng = parseFloat(parts[i+1]);
-                if (!isNaN(lat) && !isNaN(lng)) {
-                    latLngs.push([lat, lng]);
-                }
-            }
-            if (latLngs.length > 2) {
-                const first = latLngs[0];
-                const last = latLngs[latLngs.length - 1];
-                if (first[0] !== last[0] || first[1] !== last[1]) {
-                    latLngs.push([...first]);
-                }
-                return { type: 'polygon', data: latLngs };
-            }
-        } catch (e) {
-            console.error("Error parsing 'coords' parameter:", e);
-        }
-    }
-
-    // 2. อ่านค่าจาก 'points' หรือ 'markers' รูปแบบ (เลขโฉนด, Lat, Lng, ...)
-    const pointsParam = params.get('points') || params.get('markers');
-    if (pointsParam) {
-        try {
-            // decodeURIComponent เพื่อรองรับกรณี URL Encode (%2C)
-            const decoded = decodeURIComponent(pointsParam);
-            const parts = decoded.split(',').map(item => item.trim()).filter(item => item !== '');
-            const markersData = [];
-
-            // ตรวจสอบโครงสร้าง: เช็กว่าความยาวข้อมูลหาร 3 ลงตัว และพจน์ที่ 2 กับ 3 เป็น Lat/Lng ที่ถูกต้องหรือไม่
-            const is3PartFormat = (parts.length % 3 === 0) && 
-                                  !isNaN(parseFloat(parts[1])) && 
-                                  !isNaN(parseFloat(parts[2]));
-
-            if (is3PartFormat) {
-                // โครงสร้าง (เลขโฉนด / ข้อความ, Lat, Lng)
-                for (let i = 0; i < parts.length; i += 3) {
-                    const title = parts[i];
-                    const lat = parseFloat(parts[i+1]);
-                    const lng = parseFloat(parts[i+2]);
-                    if (!isNaN(lat) && !isNaN(lng)) {
-                        markersData.push({ title: title, lat: lat, lng: lng });
+        // ฟังก์ชันอ่านค่าพิกัดจาก GET Request (แก้ไขปรับปรุงแล้ว)
+        function getCoordsFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            
+            // 1. อ่านค่าจาก 'coords' สำหรับ 1 แปลงที่ดิน (Polygon)
+            const coordsParam = params.get('coords');
+            if (coordsParam) {
+                try {
+                    const decoded = decodeURIComponent(coordsParam);
+                    const parts = decoded.split(',').map(item => item.trim());
+                    const latLngs = [];
+                    for (let i = 0; i < parts.length; i += 2) {
+                        const lat = parseFloat(parts[i]);
+                        const lng = parseFloat(parts[i+1]);
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            latLngs.push([lat, lng]);
+                        }
                     }
-                }
-            } else {
-                // โครงสร้างมาตรฐานแบบเดิม (Lat, Lng, Lat, Lng)
-                let count = 1;
-                for (let i = 0; i < parts.length; i += 2) {
-                    const lat = parseFloat(parts[i]);
-                    const lng = parseFloat(parts[i+1]);
-                    if (!isNaN(lat) && !isNaN(lng)) {
-                        markersData.push({ title: `${count++}`, lat: lat, lng: lng });
+                    if (latLngs.length > 2) {
+                        const first = latLngs[0];
+                        const last = latLngs[latLngs.length - 1];
+                        if (first[0] !== last[0] || first[1] !== last[1]) {
+                            latLngs.push([...first]);
+                        }
+                        return { type: 'polygon', data: latLngs };
                     }
+                } catch (e) {
+                    console.error("Error parsing 'coords' parameter:", e);
                 }
             }
 
-            if (markersData.length > 0) {
-                return { type: 'points', data: markersData };
-            }
-        } catch (e) {
-            console.error("Error parsing 'points/markers' parameter:", e);
-        }
-    }
+            // 2. อ่านค่าจาก 'points' หรือ 'markers' รูปแบบ (เลขโฉนด, Lat, Lng, ...)
+            const pointsParam = params.get('points') || params.get('markers');
+            if (pointsParam) {
+                try {
+                    // decodeURIComponent เพื่อรองรับกรณี URL Encode (%2C)
+                    const decoded = decodeURIComponent(pointsParam);
+                    const parts = decoded.split(',').map(item => item.trim()).filter(item => item !== '');
+                    const markersData = [];
 
-    return null;
-}
+                    // ตรวจสอบโครงสร้าง: เช็กว่าความยาวข้อมูลหาร 3 ลงตัว และพจน์ที่ 2 กับ 3 เป็น Lat/Lng ที่ถูกต้องหรือไม่
+                    const is3PartFormat = (parts.length % 3 === 0) && 
+                                          !isNaN(parseFloat(parts[1])) && 
+                                          !isNaN(parseFloat(parts[2]));
+
+                    if (is3PartFormat) {
+                        // โครงสร้าง (เลขโฉนด / ข้อความ, Lat, Lng)
+                        for (let i = 0; i < parts.length; i += 3) {
+                            const title = parts[i];
+                            const lat = parseFloat(parts[i+1]);
+                            const lng = parseFloat(parts[i+2]);
+                            if (!isNaN(lat) && !isNaN(lng)) {
+                                markersData.push({ title: title, lat: lat, lng: lng });
+                            }
+                        }
+                    } else {
+                        // โครงสร้างมาตรฐานแบบเดิม (Lat, Lng, Lat, Lng)
+                        let count = 1;
+                        for (let i = 0; i < parts.length; i += 2) {
+                            const lat = parseFloat(parts[i]);
+                            const lng = parseFloat(parts[i+1]);
+                            if (!isNaN(lat) && !isNaN(lng)) {
+                                markersData.push({ title: `${count++}`, lat: lat, lng: lng });
+                            }
+                        }
+                    }
+
+                    if (markersData.length > 0) {
+                        return { type: 'points', data: markersData };
+                    }
+                } catch (e) {
+                    console.error("Error parsing 'points/markers' parameter:", e);
+                }
+            }
+
+            return null;
+        }
 
         const map = L.map('map', {
             maxZoom: 22,
@@ -506,6 +505,16 @@ function getCoordsFromURL() {
             document.getElementById('total-perimeter').innerText = "-";
             document.getElementById('total-area').innerHTML = `<span style="font-size: 12px; color: var(--text-muted);">-</span>`;
 
+            // สร้าง Red Pin Icon มาตรฐานของ Leaflet
+            const redPinIcon = L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            });
+
             let sumLat = 0, sumLng = 0;
 
             for (let i = 0; i < totalPoints; i++) {
@@ -514,12 +523,7 @@ function getCoordsFromURL() {
                 sumLng += item.lng;
 
                 const marker = L.marker([item.lat, item.lng], {
-                    icon: L.divIcon({
-                        className: 'corner-marker',
-                        html: `${item.title}`,
-                        iconSize: ['auto', 22],
-                        iconAnchor: [11, 11]
-                    })
+                    icon: redPinIcon
                 }).addTo(layerGroup);
 
                 const googleMapsUrl = `https://www.google.com/maps/place/${item.lat},${item.lng}`;
